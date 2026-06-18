@@ -72,18 +72,29 @@ func newCrawlPromotedCmd(flags *rootFlags) *cobra.Command {
 			if err != nil {
 				return classifyAPIError(err, flags)
 			}
-			if wantsHumanTable(cmd.OutOrStdout(), flags) {
-				var items []map[string]any
-				if json.Unmarshal(data, &items) == nil && len(items) > 0 {
-					if err := printAutoTable(cmd.OutOrStdout(), items); err != nil {
-						return err
+
+			// Tenta extrair tabela estruturada do JSON do Crawl4AI.
+			// O Crawl4AI retorna dados no formato:
+			//   {"success":true,"results":[{"tables":[{"headers":[...],"rows":[[...],...]}]}]}
+			// Extraímos as linhas e usamos o pipeline de output existente.
+			if IsCrawl4AITableResponse(data) {
+				items, parseErr := ExtractFiiTableRows(data)
+				if parseErr == nil && len(items) > 0 {
+					if wantsHumanTable(cmd.OutOrStdout(), flags) {
+						if err := printAutoTable(cmd.OutOrStdout(), items); err != nil {
+							return err
+						}
+						fmt.Fprintf(os.Stderr, "\nShowing %d FIIs. Use --select to choose columns, --json for JSON output.\n", len(items))
+						return nil
 					}
-					if len(items) >= 25 {
-						fmt.Fprintf(os.Stderr, "\nShowing %d results. To narrow: add --limit, --json --select, or filter flags.\n", len(items))
-					}
+					// Para --json/--agent, emite os dados estruturados
+					out, _ := json.MarshalIndent(items, "", "  ")
+					fmt.Fprintln(cmd.OutOrStdout(), string(out))
 					return nil
 				}
 			}
+
+			// Fallback: output raw do Crawl4AI (HTML, etc.)
 			return printOutputWithFlags(cmd.OutOrStdout(), data, flags)
 		},
 	}

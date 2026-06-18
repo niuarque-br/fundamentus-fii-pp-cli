@@ -23,9 +23,46 @@ import (
 	"github.com/mark3labs/mcp-go/server"
 )
 
+// tryExtractTables tenta extrair tabelas estruturadas da resposta do Crawl4AI.
+// Se conseguir, retorna os dados em formato JSON compacto ([]map[string]any).
+// Se não conseguir (resposta não é do Crawl4AI ou não tem tabelas), retorna nil.
+func tryExtractTables(data json.RawMessage) json.RawMessage {
+	if len(data) == 0 {
+		return nil
+	}
+	var probe struct {
+		Success bool `json:"success"`
+	}
+	if err := json.Unmarshal(data, &probe); err != nil || !probe.Success {
+		return nil
+	}
+	items, err := cli.ExtractFiiTableRows(data)
+	if err != nil || len(items) == 0 {
+		return nil
+	}
+	// Se couber no limite do MCP, retorna os dados estruturados
+	out, err := json.Marshal(items)
+	if err != nil {
+		return nil
+	}
+	if len(out) <= mcpToolResultMaxBytes {
+		return out
+	}
+	// Muito grande - retorna preview limitado
+	items = items[:mcpToolResultMaxItems]
+	out, _ = json.Marshal(map[string]any{
+		"count":       len(items),
+		"items":       items,
+		"truncated":   true,
+		"original_bytes": len(data),
+		"note":        "Structured table data (truncated). Use the CLI with --select or --json for complete data.",
+	})
+	return out
+}
+
 const (
-	mcpToolResultMaxBytes = 60000
-	mcpToolResultMaxItems = 50
+	mcpToolResultMaxBytes = 600000
+	mcpToolResultMaxItems = 1000
 	// MCP hosts can fan out tool calls faster than a human CLI session.
 	// Keep them on the same polite-client limiter path instead of disabling
 	// pacing with rate=0; users can still tune human CLI calls with --rate-limit.
@@ -177,10 +214,18 @@ func makeAPIHandler(method, pathTemplate string, readOnly bool, binaryResponse b
 					setNestedBodyArg(bodyArgs, binding.BodyPath, v)
 				} else {
 					// If the value is a JSON array string, parse it as native array
-					if s, ok := v.(string); ok && strings.HasPrefix(s, "[") {
-						var parsed any
-						if err := json.Unmarshal([]byte(s), &parsed); err == nil {
-							bodyArgs[binding.WireName] = parsed
+					if s, ok := v.(string); ok {
+						if strings.HasPrefix(s, "[") {
+							var parsed any
+							if err := json.Unmarshal([]byte(s), &parsed); err == nil {
+								bodyArgs[binding.WireName] = parsed
+								break
+							}
+						} else {
+							// Wrap single string values in a 1-element array.
+							// Crawl4AI expects string-type fields like "urls"
+							// to be arrays, but MCP agents send them as plain strings.
+							bodyArgs[binding.WireName] = []string{s}
 							break
 						}
 					}
@@ -289,6 +334,13 @@ func makeAPIHandler(method, pathTemplate string, readOnly bool, binaryResponse b
 				"byte_count":       len(data),
 			})
 			return mcplib.NewToolResultText(string(out)), nil
+		}
+		// Tenta extrair tabelas estruturadas do Crawl4AI antes de cair no
+		// pipeline genérico de output (que trata como HTML bruto e estoura
+		// o limite de 60KB). Se o JSON contiver a estrutura de tabelas,
+		// retorna os dados em formato compacto.
+		if structured := tryExtractTables(data); structured != nil {
+			return mcplib.NewToolResultText(string(structured)), nil
 		}
 		return mcpToolResultText(method, data), nil
 	}

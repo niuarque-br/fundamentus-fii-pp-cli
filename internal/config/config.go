@@ -4,6 +4,7 @@
 package config
 
 import (
+	"bufio"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -37,6 +38,9 @@ func Load(configPath string) (*Config, error) {
 		path = filepath.Join(home, ".config", "fundamentus-fii-pp-cli", "config.toml")
 	}
 	cfg.Path = path
+
+	// Load .env from config directory (same dir as config.toml)
+	loadDotEnv(filepath.Dir(path))
 
 	// Try to load config file
 	data, err := os.ReadFile(path)
@@ -79,7 +83,42 @@ func Load(configPath string) (*Config, error) {
 			}
 		}
 	}
+
+	// Auth token override via CRAWL4AI_API_TOKEN env var
+	if v := os.Getenv("CRAWL4AI_API_TOKEN"); v != "" {
+		cfg.AuthHeaderVal = "Bearer " + v
+		cfg.AuthSource = "env"
+	}
 	return cfg, nil
+}
+
+// loadDotEnv reads a .env file from dir and sets each KEY=VALUE as an
+// environment variable via os.Setenv — but only if that variable is not
+// already set in the process environment.
+func loadDotEnv(dir string) {
+	envPath := filepath.Join(dir, ".env")
+	f, err := os.Open(envPath)
+	if err != nil {
+		return
+	}
+	defer f.Close()
+
+	scanner := bufio.NewScanner(f)
+	for scanner.Scan() {
+		line := strings.TrimSpace(scanner.Text())
+		if line == "" || strings.HasPrefix(line, "#") {
+			continue
+		}
+		eq := strings.IndexByte(line, '=')
+		if eq < 1 {
+			continue
+		}
+		key := line[:eq]
+		val := line[eq+1:]
+		if _, exists := os.LookupEnv(key); !exists {
+			os.Setenv(key, val)
+		}
+	}
 }
 
 func (c *Config) AuthHeader() string {
