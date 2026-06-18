@@ -1,0 +1,27 @@
+{
+  "manifest_version": "0.3",
+  "name": "fundamentus-fii-pp-mcp",
+  "display_name": "Fundamentus Fii",
+  "version": "0.0.0",
+  "description": "Fundos Imobiliários do Fundamentus via Crawl4AI — dados estruturados: cotação, DY, P/VP, vacância, segmento, etc.",
+  "author": {
+    "name": "CLI Printing Press"
+  },
+  "license": "Apache-2.0",
+  "server": {
+    "type": "binary",
+    "entry_point": "bin/fundamentus-fii-pp-mcp",
+    "mcp_config": {
+      "command": "${__dirname}/bin/fundamentus-fii-pp-mcp",
+      "args": []
+    }
+  },
+  "compatibility": {
+    "claude_desktop": ">=1.0.0",
+    "platforms": [
+      "darwin",
+      "linux",
+      "win32"
+    ]
+  }
+}

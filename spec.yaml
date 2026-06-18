@@ -1,0 +1,187 @@
+openapi: "3.0.3"
+info:
+  title: Fundamentus FII
+  description: 'Fundos Imobiliários do Fundamentus via Crawl4AI — dados estruturados: cotação, DY, P/VP, vacância, segmento, etc.'
+  version: "1.0.0"
+servers:
+  - url: https://b279i8mvg0nr9p9cjp1exd1d.152.67.46.88.sslip.io
+    description: Crawl4AI Scraper
+paths:
+  /crawl:
+    post:
+      summary: Listar todos os FIIs
+      description: Obtém a tabela completa de Fundos Imobiliários com todos os indicadores via Crawl4AI
+      operationId: listarFiis
+      tags:
+        - FIIs
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - urls
+              properties:
+                urls:
+                  type: array
+                  items:
+                    type: string
+                  example:
+                    - "https://www.fundamentus.com.br/fii_resultado.php"
+                priority:
+                  type: integer
+                  default: 10
+                crawler_config:
+                  type: object
+                  properties:
+                    headers:
+                      type: object
+                      properties:
+                        User-Agent:
+                          type: string
+                          default: "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
+      responses:
+        "200":
+          description: Tabela de FIIs extraída
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  results:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        tables:
+                          type: array
+                          items:
+                            type: object
+                            properties:
+                              headers:
+                                type: array
+                                items:
+                                  type: string
+                                example:
+                                  - Papel
+                                  - Segmento
+                                  - Cotação
+                                  - FFO Yield
+                                  - Dividend Yield
+                                  - P/VP
+                                  - Valor de Mercado
+                                  - Liquidez
+                                  - Qtd de imóveis
+                                  - Preço do m2
+                                  - Aluguel por m2
+                                  - Cap Rate
+                                  - Vacância Média
+                              rows:
+                                type: array
+                                items:
+                                  type: array
+                                  items:
+                                    type: string
+                        markdown:
+                          type: object
+                          properties:
+                            raw_markdown:
+                              type: string
+                        status_code:
+                          type: integer
+  /crawl-detalhes:
+    post:
+      summary: Detalhes de um FII específico
+      description: Obtém os detalhes completos de um FII (informações financeiras, imóveis, histórico)
+      operationId: detalhesFii
+      tags:
+        - FIIs
+      parameters:
+        - name: papel
+          in: query
+          required: true
+          schema:
+            type: string
+            pattern: "^[A-Z0-9]{4,11}$"
+          description: 'Código do FII (ex: HGLG11, KNRI11, XPLG11)'
+          example: HGLG11
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - urls
+              properties:
+                urls:
+                  type: array
+                  items:
+                    type: string
+                  description: URL do detalhe do FII no Fundamentus (gerado automaticamente pelo parâmetro papel)
+                priority:
+                  type: integer
+                  default: 10
+      responses:
+        "200":
+          description: Detalhes do FII
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  results:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        markdown:
+                          type: object
+                          properties:
+                            raw_markdown:
+                              type: string
+                        status_code:
+                          type: integer
+components:
+  schemas:
+    FII:
+      type: object
+      properties:
+        papel:
+          type: string
+        segmento:
+          type: string
+        cotacao:
+          type: string
+        ffo_yield:
+          type: string
+        dividend_yield:
+          type: string
+        pvp:
+          type: string
+        valor_mercado:
+          type: string
+        liquidez:
+          type: string
+        qtd_imoveis:
+          type: string
+        preco_m2:
+          type: string
+        aluguel_m2:
+          type: string
+        cap_rate:
+          type: string
+        vacancia_media:
+          type: string
+    FIIListResponse:
+      type: object
+      properties:
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/FII"

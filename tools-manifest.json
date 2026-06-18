@@ -1,0 +1,71 @@
+{
+  "api_name": "fundamentus-fii",
+  "base_url": "https://b279i8mvg0nr9p9cjp1exd1d.152.67.46.88.sslip.io",
+  "description": "Fundos Imobiliários do Fundamentus via Crawl4AI — dados estruturados: cotação, DY, P/VP, vacância, segmento, etc.",
+  "mcp_ready": "full",
+  "http_transport": "standard",
+  "auth": {
+    "type": "none"
+  },
+  "required_headers": [],
+  "tools": [
+    {
+      "name": "crawl_listar-fiis",
+      "description": "Obtém a tabela completa de Fundos Imobiliários com todos os indicadores via Crawl4AI. Required: urls. Optional: crawler_config, priority (default: 10). Returns array of CrawlListarFiisItem.",
+      "method": "POST",
+      "path": "/crawl",
+      "no_auth": true,
+      "params": [
+        {
+          "name": "crawler-config-headers-user-agent",
+          "wire_name": "crawler_config.headers.User-Agent",
+          "type": "string",
+          "location": "body",
+          "description": "User agent"
+        },
+        {
+          "name": "priority",
+          "type": "int",
+          "location": "body",
+          "description": "Priority"
+        },
+        {
+          "name": "urls",
+          "type": "string_csv_array",
+          "location": "body",
+          "description": "Urls",
+          "required": true
+        }
+      ]
+    },
+    {
+      "name": "crawl-detalhes_detalhes-fii",
+      "description": "Obtém os detalhes completos de um FII (informações financeiras, imóveis, histórico). Required: papel, urls. Optional: priority (default: 10). Returns array of CrawlDetalhesDetalhesFiiItem.",
+      "method": "POST",
+      "path": "/crawl-detalhes",
+      "no_auth": true,
+      "params": [
+        {
+          "name": "papel",
+          "type": "string",
+          "location": "query",
+          "description": "Código do FII (ex: HGLG11, KNRI11, XPLG11)",
+          "required": true
+        },
+        {
+          "name": "priority",
+          "type": "int",
+          "location": "body",
+          "description": "Priority"
+        },
+        {
+          "name": "urls",
+          "type": "string_csv_array",
+          "location": "body",
+          "description": "URL do detalhe do FII no Fundamentus (gerado automaticamente pelo parâmetro papel)",
+          "required": true
+        }
+      ]
+    }
+  ]
+}
