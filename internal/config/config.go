@@ -68,6 +68,17 @@ func Load(configPath string) (*Config, error) {
 	} else if v := os.Getenv("CRAWL4AI_URL"); v != "" {
 		cfg.BaseURL = v
 	}
+
+	// Auth token override via CRAWL4AI_API_TOKEN env var
+	// When set, wraps it as "Bearer <token>" unless auth_header is already configured.
+	if cfg.AuthHeaderVal == "" {
+		if v := os.Getenv("CRAWL4AI_API_TOKEN"); v != "" {
+			cfg.AuthHeaderVal = "Bearer " + v
+			if cfg.AuthSource == "" {
+				cfg.AuthSource = "env"
+			}
+		}
+	}
 	return cfg, nil
 }
 
