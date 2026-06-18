@@ -24,7 +24,7 @@ type Config struct {
 
 func Load(configPath string) (*Config, error) {
 	cfg := &Config{
-		BaseURL: "https://b279i8mvg0nr9p9cjp1exd1d.152.67.46.88.sslip.io",
+		BaseURL: "https://crawl4ai:8000",
 	}
 
 	// Resolve config path
@@ -64,6 +64,8 @@ func Load(configPath string) (*Config, error) {
 
 	// Base URL override (used by printing-press verify to point at mock/test servers)
 	if v := os.Getenv("FUNDAMENTUS_FII_BASE_URL"); v != "" {
+		cfg.BaseURL = v
+	} else if v := os.Getenv("CRAWL4AI_URL"); v != "" {
 		cfg.BaseURL = v
 	}
 	return cfg, nil
